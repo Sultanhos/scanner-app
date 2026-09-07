@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scanner — Papier scannen, direkt im Browser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="masthead__mark">⌗</div>
+    <div>
+      <h1>Scanner</h1>
+      <p class="masthead__sub">Aus Foto wird Dokument — direkt im Browser, ohne App-Store.</p>
+    </div>
+  </header>
+
+  <main class="deck">
+
+    <!-- Stage 1: input -->
+    <section class="stage" id="stage-input">
+      <div class="stage__label"><span class="stage__num">1</span>Foto hinzufügen</div>
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden />
+
+        <div class="dropzone__inner" id="dropzoneEmpty">
+          <p class="dropzone__hint">Datei hierher ziehen oder ablegen</p>
+          <div class="dropzone__actions">
+            <button type="button" class="btn btn--primary" id="btnCamera">Kamera öffnen</button>
+            <button type="button" class="btn btn--ghost" id="btnBrowse">Datei wählen</button>
+          </div>
+        </div>
+
+        <div class="dropzone__preview" id="dropzonePreview" hidden>
+          <img id="sourceImg" alt="Ausgewähltes Foto" />
+          <button type="button" class="btn btn--ghost btn--small" id="btnClear">Anderes Foto</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage 2: options -->
+    <section class="stage" id="stage-options">
+      <div class="stage__label"><span class="stage__num">2</span>Ausgabe wählen</div>
+
+      <div class="options">
+        <fieldset class="finish">
+          <legend class="visually-hidden">Papier-Finish</legend>
+          <label class="finish__opt">
+            <input type="radio" name="style" value="bw" checked />
+            <span class="finish__swatch finish__swatch--bw"></span>
+            <span class="finish__text">
+              <strong>Schwarz-Weiß</strong>
+              <small>Klassischer Scanner-Look, hoher Kontrast</small>
+            </span>
+          </label>
+          <label class="finish__opt">
+            <input type="radio" name="style" value="grayscale" />
+            <span class="finish__swatch finish__swatch--gray"></span>
+            <span class="finish__text">
+              <strong>Graustufen</strong>
+              <small>Weich, mit erhaltenen Details</small>
+            </span>
+          </label>
+          <label class="finish__opt">
+            <input type="radio" name="style" value="color" />
+            <span class="finish__swatch finish__swatch--color"></span>
+            <span class="finish__text">
+              <strong>Farbe</strong>
+              <small>Aufgehellt und geschärft</small>
+            </span>
+          </label>
+        </fieldset>
+
+        <label class="toggle">
+          <input type="checkbox" id="autoCrop" checked />
+          <span class="toggle__box"></span>
+          <span>Papierkanten automatisch erkennen &amp; geradeziehen</span>
+        </label>
+
+        <label class="toggle">
+          <input type="checkbox" id="dewarp" />
+          <span class="toggle__box"></span>
+          <span>Knicke &amp; Wölbungen glätten (nur bei sichtbar gebogenem Papier)</span>
+        </label>
+
+        <label class="toggle">
+          <input type="checkbox" id="removeFinger" checked />
+          <span class="toggle__box"></span>
+          <span>Finger/Hand am Rand automatisch entfernen</span>
+        </label>
+      </div>
+
+      <button type="button" class="btn btn--primary btn--wide" id="btnScan" disabled>Scan erstellen</button>
+    </section>
+
+    <!-- Stage 3: result -->
+    <section class="stage stage--result" id="stage-result" hidden>
+      <div class="stage__label"><span class="stage__num">3</span>Ergebnis</div>
+
+      <div class="result">
+        <div class="result__frame" id="resultFrame">
+          <div class="scanline" id="scanline"></div>
+          <img id="resultImg" alt="Gescanntes Dokument" hidden />
+        </div>
+        <p class="result__note" id="resultNote"></p>
+        <div class="result__actions">
+          <a class="btn btn--primary" id="btnDownload" download="scan.jpg" hidden>Als JPG herunterladen</a>
+          <button type="button" class="btn btn--ghost" id="btnSavePhotos" hidden>In Fotos speichern</button>
+          <button type="button" class="btn btn--ghost" id="btnAgain">Nächstes Foto scannen</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Session: all pages scanned so far -->
+    <section class="stage stage--session" id="stage-session" hidden>
+      <div class="stage__label">Gescannte Seiten <span class="pill" id="pageCount">0</span></div>
+
+      <div class="pages" id="pagesStrip"></div>
+
+      <div class="session__actions">
+        <button type="button" class="btn btn--primary" id="btnExportPdf">Alle als PDF exportieren</button>
+        <button type="button" class="btn btn--ghost" id="btnSaveAllPhotos">Alle in Fotos speichern</button>
+      </div>
+      <p class="session__hint" id="shareHint" hidden>
+        Dein Browser unterstützt das direkte Teilen mehrerer Bilder nicht — die Seiten werden
+        stattdessen einzeln zum Speichern geöffnet.
+      </p>
+    </section>
+
+    <p class="error" id="errorBox" hidden></p>
+
+  </main>
+
+  <footer class="foot">
+    <p>Verarbeitung läuft lokal auf diesem Server — keine Bilder werden an Dritte gesendet.</p>
+  </footer>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
