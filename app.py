@@ -21,7 +21,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSED_DIR = os.path.join(BASE_DIR, "processed")
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-MAX_DIMENSION = 1600  # working resolution for edge detection (speed)
+MAX_DIMENSION = 2800  # working resolution — high enough to preserve text sharpness, capped to stay fast on a constrained server
 
 
 # --------------------------------------------------------------------------
