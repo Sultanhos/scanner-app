@@ -355,11 +355,18 @@ def apply_style(image, style):
         result = clahe.apply(gray)
         return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
 
-    # "bw" — crisp black-and-white document look
+    # "bw" — crisp black-and-white document look.
+    #
+    # Correct uneven lighting first (divide by a heavily-blurred copy of
+    # itself, which cancels out shadows/gradients), then apply ONE global
+    # threshold (Otsu) rather than many small local ones. A small local
+    # window is exactly what fragments thin or small text when there
+    # isn't quite enough contrast inside that window — a global cutoff on
+    # already-flattened lighting holds up much better for fine print.
     gray = cv2.GaussianBlur(gray, (3, 3), 0)
-    thresh = cv2.adaptiveThreshold(
-        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15
-    )
+    background = cv2.GaussianBlur(gray, (0, 0), sigmaX=25)
+    normalized = cv2.divide(gray, background, scale=255)
+    _, thresh = cv2.threshold(normalized, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
 
 
