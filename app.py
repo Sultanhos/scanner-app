@@ -369,6 +369,16 @@ def scan_image(image_bytes, style="bw", auto_crop=True, dewarp=True, remove_fing
     if image is None:
         raise ValueError("Could not read image")
 
+    # Downscale once, up front, to a working resolution. Modern phone
+    # photos are often 3000-4000px on the long side; running every later
+    # step (dewarp, inpainting, thresholding) at that size is what was
+    # timing out on a constrained server. This resolution is still
+    # plenty sharp for a document scan.
+    h0, w0 = image.shape[:2]
+    if max(h0, w0) > MAX_DIMENSION:
+        scale = MAX_DIMENSION / max(h0, w0)
+        image = cv2.resize(image, (int(w0 * scale), int(h0 * scale)), interpolation=cv2.INTER_AREA)
+
     warped = image
     cropped = False
     if auto_crop:
