@@ -63,10 +63,11 @@ def find_document_contour(image):
     """Find a clean, symmetric rectangle around the document.
 
     Tries two strategies and uses whichever gives a plausible result:
-    1. Brightness-based: works well when the page is photographed on a
-       darker surface (the common case) — thresholds paper-vs-background
-       directly, which is robust even when the page edge itself is faint.
-    2. Edge-based: a Canny edge map, for busier or lighter backgrounds.
+    1. Edge-based: a Canny edge map. This is the original, well-tested
+       method — reliable across normal lighting and most backgrounds.
+    2. Brightness-based: a plain threshold. Only used as a fallback, for
+       the specific case of a page on a strongly darker surface where
+       edges alone are faint (e.g. a phone photo on a dark table).
     """
     h, w = image.shape[:2]
     ratio = MAX_DIMENSION / max(h, w) if max(h, w) > MAX_DIMENSION else 1.0
@@ -74,18 +75,19 @@ def find_document_contour(image):
     gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Strategy 1: brightness threshold
-    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    box = _largest_quad_from_mask(thresh, ratio)
-    if box is not None:
-        return box
-
-    # Strategy 2: edges
+    # Strategy 1: edges (primary — most reliable across lighting conditions)
     edged = cv2.Canny(blurred, 50, 150)
     edged = cv2.dilate(edged, np.ones((3, 3), np.uint8), iterations=2)
     edged = cv2.erode(edged, np.ones((3, 3), np.uint8), iterations=1)
     box = _largest_quad_from_mask(edged, ratio, min_area_frac=0.2)
-    return box
+    if box is not None:
+        return box
+
+    # Strategy 2: brightness threshold (fallback only, for a dark
+    # background where edges are too faint to trace reliably). Stricter
+    # area bound since a bad fallback match is worse than no crop.
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return _largest_quad_from_mask(thresh, ratio, min_area_frac=0.25, max_area_frac=0.9)
 
 
 def four_point_transform(image, pts):
@@ -124,7 +126,7 @@ def clean_border_artifacts(image):
     core = gray[h // 4: 3 * h // 4, w // 4: 3 * w // 4]
     page_level = np.median(core)
 
-    dark_mask = (gray.astype(np.int16) < (page_level - 55)).astype(np.uint8) * 255
+    dark_mask = (gray.astype(np.int16) < (page_level - 70)).astype(np.uint8) * 255
     dark_mask = cv2.morphologyEx(dark_mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 
     margin = max(6, int(0.02 * min(h, w)))
@@ -151,7 +153,7 @@ def clean_border_artifacts(image):
     return cv2.inpaint(image, final_mask, 9, cv2.INPAINT_TELEA)
 
 
-def auto_trim_background(image, max_trim_frac=0.10, bright_ratio=0.55, min_brightness=130):
+def auto_trim_background(image, max_trim_frac=0.06, bright_ratio=0.7, min_brightness=130):
     """Trim each edge independently until it reaches real page content.
 
     A rectangle fit around a real (slightly bent/rounded) sheet of paper
